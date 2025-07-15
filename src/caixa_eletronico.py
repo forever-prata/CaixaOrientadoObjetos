@@ -1,26 +1,36 @@
+# -*- coding: utf-8 -*-
+
+from notificacao import Notificacao
+from log_service import LogService
+
 class CaixaEletronico:
     """
     Representa um caixa eletrônico, gerenciando o estoque de cédulas e as operações de depósito e saque.
     """
 
     def __init__(self):
-
         self._cedulas = {
-            200: 0,
-            100: 0,
-            50: 0,
-            20: 0,
-            10: 0,
-            5: 0,
-            2: 0
+            200: 0, 100: 0, 50: 0, 20: 0, 10: 0, 5: 0, 2: 0
         }
+        self._notificadores = []
+
+    def adicionar_notificador(self, notificador: Notificacao):
+        """
+        Adiciona um serviço de notificação à lista.
+        """
+        if notificador not in self._notificadores:
+            self._notificadores.append(notificador)
+
+    def _notificar_evento(self, mensagem):
+        """
+        Dispara um evento para todos os notificadores registrados.
+        """
+        for notificador in self._notificadores:
+            notificador.registrar_evento(mensagem)
 
     def get_valor_total(self):
         """
         Calcula e retorna o valor total disponível no caixa eletrônico.
-
-        Returns:
-            float: O valor total.
         """
         total = 0
         for cedula, quantidade in self._cedulas.items():
@@ -30,32 +40,28 @@ class CaixaEletronico:
     def depositar(self, cedulas_depositadas):
         """
         Realiza um depósito de cédulas no caixa eletrônico.
-
-        Args:
-            cedulas_depositadas (dict): Um dicionário onde a chave é o valor da cédula e o valor é a quantidade.
         """
+        deposito_str = ", ".join([f"{qtd}x R${c}" for c, qtd in cedulas_depositadas.items()])
         for cedula, quantidade in cedulas_depositadas.items():
             if cedula in self._cedulas:
                 self._cedulas[cedula] += quantidade
         
         print(f"Depósito realizado com sucesso. Novo saldo: R$ {self.get_valor_total():.2f}")
-
+        self._notificar_evento(f"Depósito realizado: {deposito_str}")
 
     def sacar(self, valor):
         """
         Realiza um saque do caixa eletrônico, se possível.
-
-        Args:
-            valor (float): O valor a ser sacado.
         """
-
         #verificações iniciais de execução
         if valor <= 0:
             print("Valor de saque inválido.")
             return
 
         if valor > self.get_valor_total():
+            mensagem_erro = f"Erro no saque: Valor solicitado (R$ {valor:.2f}) é maior que o saldo total."
             print(f"Saque de R$ {valor:.2f} não realizado. Saldo insuficiente.")
+            self._notificar_evento(mensagem_erro)
             return
 
         cedulas_para_saque = {}
@@ -80,31 +86,46 @@ class CaixaEletronico:
             saque_formatado = ", ".join([f"{qtd}x R${c}" for c, qtd in cedulas_para_saque.items()])
             print(f"Saque de R$ {valor:.2f} realizado com sucesso: {saque_formatado}")
             print(f"Novo saldo: R$ {self.get_valor_total():.2f}")
+            self._notificar_evento(f"Saque realizado: R${valor:.2f} - {saque_formatado}")
         else:
-            print(f"Não foi possível realizar o saque de R$ {valor:.2f} com as cédulas disponíveis.")
+            mensagem_erro = f"Erro no saque: Não foi possível compor o valor de R${valor:.2f} com a combinação de cédulas atual."
+            print(mensagem_erro)
+            
+            valor_sugerido = valor - valor_restante
+            if valor_sugerido > 0:
+                sugestao_msg = f"(Opcional): Você pode tentar sacar R$ {valor_sugerido:.2f}."
+                print(sugestao_msg)
+                mensagem_erro += f" Sugestão de saque alternativo: R$ {valor_sugerido:.2f}."
+
+            self._notificar_evento(mensagem_erro)
 
 
 if __name__ == '__main__':
-
+    # --- Configuração ---
     caixa = CaixaEletronico()
+    log_service = LogService() # Cria o serviço de log
+    caixa.adicionar_notificador(log_service) # Registra o serviço no caixa
+
+    # --- Simulação ---
     print(f"--- Início da Simulação ---")
     print(f"Valor inicial no caixa: R$ {caixa.get_valor_total():.2f}")
 
     #deposito inicial
-    deposito = {100: 10, 50: 10, 20: 10, 10: 10} # R$1000 + R$500 + R$200 + R$100 = R$1800
+    deposito = {100: 10, 50: 5, 20: 10, 10: 5} # Total R$1000 + R$250 + R$200 + R$50 = R$1500
     print("\n--- Realizando Depósito ---")
     caixa.depositar(deposito)
 
     #testes de saque
     print("\n--- Testando Saques ---")
-    caixa.sacar(380) # funciona: 3x R$100, 1x R$50, 1x R$20, 1x R$10
+    caixa.sacar(380) # Saque normal
     print("-" * 20)
-    caixa.sacar(500) # funciona: 5x R$100
+    caixa.sacar(125) # Saque que vai falhar e gerar sugestão
     print("-" * 20)
-    caixa.sacar(125) # falha (sem notas de 5)
+    caixa.sacar(120) # Saque da sugestão anterior
     print("-" * 20)
-    caixa.sacar(2000) # falha (saldo insuficiente)
+    caixa.sacar(2000) # Saldo insuficiente
     print("-" * 20)
 
-    print(f"Valor final no caixa: R$ {caixa.get_valor_total():.2f}")
+    print(f"\nValor final no caixa: R$ {caixa.get_valor_total():.2f}")
     print("--- Fim da Simulação ---")
+    print("\nVerifique o arquivo 'log_caixa.txt' para ver os eventos registrados.")

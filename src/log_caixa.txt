@@ -1,0 +1,5 @@
+[15/07/2025 15:45:15] Depósito realizado: 10x R$100, 5x R$50, 10x R$20, 5x R$10
+[15/07/2025 15:45:15] Saque realizado: R$380.00 - 3x R$100, 1x R$50, 1x R$20, 1x R$10
+[15/07/2025 15:45:15] Erro no saque: Não foi possível compor o valor de R$125.00 com a combinação de cédulas atual. Sugestão de saque alternativo: R$ 120.00.
+[15/07/2025 15:45:15] Saque realizado: R$120.00 - 1x R$100, 1x R$20
+[15/07/2025 15:45:15] Erro no saque: Valor solicitado (R$ 2000.00) é maior que o saldo total.
